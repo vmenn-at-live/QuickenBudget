@@ -1,0 +1,17 @@
+/* https://github.com/vmenn-at-live/QuickenBudget
+ * Copyright (c) 2026 by Valerian Menn - MIT License
+ */
+table {
+    border-collapse: collapse;
+    table-layout: auto;
+}
+
+table th, table td {
+    border: 1px solid #ddd;
+    padding: 8px 12px;
+    text-align: left;
+}
+
+table th {
+    background-color: #f2f2f2;
+}

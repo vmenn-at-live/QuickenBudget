@@ -1,0 +1,240 @@
+﻿@* https://github.com/vmenn-at-live/QuickenBudget
+ * Copyright (c) 2026 by Valerian Menn - MIT License
+*@
+@page
+@model IndexModel
+@using System.Text.Json
+
+<h1>Years Income and Expenses</h1>
+
+<div id="d3-tooltip" style="position:absolute; display:none; background:#fff; border:1px solid #ccc; padding:8px; border-radius:6px; pointer-events:none; z-index:1000; font-size:14px;"></div>
+<div class="charts-container">
+    <div id="chart"></div>
+</div>
+<div class="button-container">
+<button class="selector" onclick="selectChart('Difference', this)" id="default">Daily Balance</button>
+<button class="selector" onclick="selectChart('TotalLines', this)">Totals By Year</button>
+<button class="selector" onclick="selectChart('AverageLines', this)">Average By Year</button>
+</div>
+<div>
+    <h2>Details</h2>
+    <ul>
+        @foreach (var year in Model.Years)
+        {
+            <li><a href="/YearSummary?year=@year.Year">@year</a></li>
+        }
+    </ul>
+</div>
+
+@section Scripts {
+<script>
+    // Class definition
+    class BalanceNode {
+        constructor(year, month, day, balance) {
+            this.date = new Date(year, month, day);
+            this.balance = isNaN(balance) ? null : balance;
+        }
+
+        html() {
+            return `${this.date.toLocaleDateString()}<br>Balance: ${Number(this.balance).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
+    }
+
+    class ExpensesIncomeNode {
+        constructor (year, income, expenses) {
+            this.year = year;
+            this.income = income;
+            this.expenses = expenses;
+        }
+
+        html() {
+            return `<strong>${this.year}</strong>
+                <br>Income: ${Number(this.income).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                <br>Expense: ${Number(this.expenses).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
+    }
+
+    const minimumWidth = 600;
+    const containerHeight = 600;
+    const labelPadding = 16;
+
+    let totalData = (@Html.Raw(JsonSerializer.Serialize(Model.Years))).map (o => new ExpensesIncomeNode(o.Year, o.TotalIncome,o.TotalExpenses));
+    let averageData = (@Html.Raw(JsonSerializer.Serialize(Model.Years))).map (o => new ExpensesIncomeNode(o.Year, o.AverageIncome,o.AverageExpenses));
+    let runningTotalData = (@Html.Raw(JsonSerializer.Serialize(Model.RunningTotal))).map(o => new BalanceNode(o.year, o.month, o.day, o.balance));
+    document.getElementById("default").click();
+
+    function drawChart(data, width, height) {
+        const xExtent = d3.extent(data, d => d.year);
+        let yearCount = data.length;
+
+        let maxAmount = d3.max(data, d => d.income);
+        const expensesMaxValue = d3.max(data, d => d.expenses);
+        if (expensesMaxValue > maxAmount)
+        {
+            maxAmount = expensesMaxValue;
+        }
+
+        // X scale - years. No range yet.
+        const x = d3.scaleLinear().domain(xExtent);
+        // Y scale - amounts. No range yet.
+        const y = d3.scaleLinear().domain([0, maxAmount]);
+
+        let {xLabelSize, yLabelSize, marginTop, marginRight, marginBottom, marginLeft} =
+            configureScalesGetMargins(height, width, x, y, yearCount, 0, "d", "($,.2f", 0, labelPadding)
+
+        // Determine how many amount labels we can show on the y axis. To provide enough spacing, we only use half of those
+        // numbers. Note that we overwrite the old estimage as we now can produce the actual number.
+        const amountsCount = Math.floor((height - marginTop - marginBottom) / (2 * yLabelSize.height));
+
+        // Ready to create the svg.
+        const svg = createSvg('chart', width, height)
+
+        const mapper = new D3MouseToPageMapper(svg, x, y, true, data, (d) => [d.year, (d.income + d.expenses) / 2]);
+        mapper.attachEvents("d3-tooltip")
+
+        svg.append("g")
+            .attr("transform", `translate(0,${height - marginBottom})`)
+            .call(d3.axisBottom(x).ticks(yearCount).tickFormat(d3.format("d")))
+            .selectAll("text")
+                .attr("font-size", commonFontSize);
+
+        svg.append("g")
+            .attr("transform", `translate(${marginLeft},0)`)
+            .call(d3.axisLeft(y).ticks(amountsCount).tickFormat(d3.format("($,.2f")))
+        .selectAll("text")
+            .attr("font-size", commonFontSize);
+
+        const linePositive = d3.line()
+            .x(d => x(d.year))
+            .y(d => y(d.income));
+
+        const lineNegative = d3.line()
+            .x(d => x(d.year))
+            .y(d => y(d.expenses));
+
+        svg.append("path")
+            .datum(data)
+            .attr("fill", "none")
+            .attr("stroke", "@Model.IncomeColor")
+            .attr("stroke-width", 2)
+            .attr("d", linePositive);
+
+        svg.append("path")
+            .datum(data)
+            .attr("fill", "none")
+            .attr("stroke", "@Model.ExpenseColor")
+            .attr("stroke-width", 2)
+            .attr("d", lineNegative);
+
+        // Add legend
+        svg.append("circle").attr("cx", width - 100).attr("cy", 20).attr("r", 6).style("fill", "@Model.IncomeColor");
+        svg.append("text").attr("x", width - 80).attr("y", 20).text("Income").style("font-size", "15px").attr("alignment-baseline", "middle");
+
+        svg.append("circle").attr("cx", width - 100).attr("cy", 40).attr("r", 6).style("fill", "@Model.ExpenseColor");
+        svg.append("text").attr("x", width - 80).attr("y", 40).text("Expenses").style("font-size", "15px").attr("alignment-baseline", "middle");
+    }
+
+    function areaChart(data, width, height)
+    {
+        // Look at the data to find the number of months in the range of dates. That would be our estimate of the
+        // number of labels on the X axis (only in order to obtain all possible labels for size measurement).
+        const dateExtent = [new Date(Math.min(...data.map(d=>d.date))), new Date(Math.max(...data.map(d=>d.date)))];
+        let months = (dateExtent[1].getFullYear() - dateExtent[0].getFullYear()) * 12 - dateExtent[0].getMonth() + dateExtent[1].getMonth();
+        // Ensure the count is at least one.
+        months = months <= 0 ? 1 : months;
+
+        // X scale is time based on date. Init the scale's domain and try getting the labels d3 will generate
+        const x = d3.scaleTime().domain(dateExtent);
+        const y = d3.scaleLinear().domain(d3.extent(data, d => d.balance));
+
+        let {xLabelSize, yLabelSize, marginTop, marginRight, marginBottom, marginLeft} =
+            configureScalesGetMargins(height, width, x, y, months, 0, null, "($,.2f", labelPadding, labelPadding)
+
+        // Find out how many months we can fit in the width as we want to avoid overlapping labels.. We will adjust the number of ticks accordingly.
+        // Note that we overwrite the old estimage as we now can produce the actual number.
+        months = Math.max (1, Math.floor((width - marginRight - marginLeft) / (xLabelSize.width + labelPadding)));
+
+        // Determine how many balances we can show on the y axis. To provide enough spacing, we only use half of those numbers.
+        // Note that we overwrite the old estimage as we now can produce the actual number.
+        const balances = Math.floor((height - marginTop - marginBottom) / (2 * yLabelSize.height));
+
+        // Ready to create the svg.
+        const svg = createSvg('chart', width, height)
+
+        // Attach the tooltip to the svg
+        const mapper = new D3MouseToPageMapper(svg, x, y, true, data, d => [d.date, d.balance]);
+        mapper.attachEvents("d3-tooltip")
+
+        const areaPos = d3.area()
+            .defined(d => d.balance > 0)
+            .x(d => x(d.date))
+            .y0(d => y(0))
+            .y1(d => y(Math.max(0, d.balance)));
+
+        // area for negative values (below zero)
+        const areaNeg = d3.area()
+            .defined(d => d.balance < 0)
+            .x(d => x(d.date))
+            .y0(d => y(0))
+            .y1(d => y(Math.min(0, d.balance)));
+
+        // draw positive area (put it under so line sits on top)
+        svg.append("path")
+            .datum(data)
+            .attr("fill", '@Model.IncomeColor')
+            .attr("stroke", "none")
+            .attr("d", areaPos);
+
+        // draw negative area
+        svg.append("path")
+            .datum(data)
+            .attr("fill", '@Model.ExpenseColor')
+            .attr("stroke", "none")
+            .attr("d", areaNeg);
+
+        // Add the x-axis.
+        svg.append("g")
+            .attr("transform", `translate(0,${height - marginBottom})`)
+            .call(d3.axisBottom(x).ticks(months).tickSizeOuter(0))
+            .selectAll("text")
+                .attr("font-size", commonFontSize);
+
+        // Add the y-axis with the right number of ticks. On y axis we don't need the actual vertical axis line, so remove it.
+        // Instead we create horizontal grid lines for each label.
+        svg.append("g")
+            .attr("transform", `translate(${marginLeft},0)`)
+            .call(d3.axisLeft(y).ticks(balances).tickFormat(d3.format("($,.2f")))
+            .call(g => g.select(".domain").remove())
+            .call(g => g.selectAll(".tick line").clone()
+                .attr("x2", width - marginLeft - marginRight)
+                .attr("stroke-opacity", 0.1))
+            .selectAll("text")
+                .attr("font-size", commonFontSize);
+    }
+
+    function selectChart(chartType, el)
+    {
+        d3.select("#chart").selectAll("svg").remove();
+        hideTooltip("d3-tooltip");
+        let buttons = document.getElementsByClassName("selector");
+        for (let i = 0; i < buttons.length; i++) {
+          buttons[i].style.backgroundColor = "";
+        }
+        el.style.backgroundColor = "#999";
+        const containerWidth = d3.select("#chart").node().getBoundingClientRect().width;
+        if (chartType == "AverageLines")
+        {
+            drawChart(averageData, Math.max(minimumWidth, containerWidth), containerHeight);
+        }
+        else if (chartType == "Difference")
+        {
+            areaChart(runningTotalData, Math.max(minimumWidth, containerWidth), containerHeight);
+        }
+        else
+        {
+            drawChart(totalData, Math.max(minimumWidth, containerWidth), containerHeight);
+        }
+    }
+
+</script>
+}

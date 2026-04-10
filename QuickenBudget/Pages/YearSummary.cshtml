@@ -1,0 +1,208 @@
+﻿@* https://github.com/vmenn-at-live/QuickenBudget
+ * Copyright (c) 2026 by Valerian Menn - MIT License
+*@
+@page
+@model QuickenBudget.Pages.YearSummaryModel
+
+<h1>Groups for Year @Model.Year</h1>
+
+<svg id="label-measure" style="position: absolute; visibility: hidden; height: 0; width: 0;"></svg>
+<div id="d3-tooltip" style="position:absolute; display:none; background:#fff; border:1px solid #ccc; padding:8px; border-radius:6px; pointer-events:none; z-index:1000; font-size:14px;"></div>
+<div class="charts-container">
+    <div id="d3-group-bar"></div>
+    <div id="d3-total-bar"></div>
+    <div id="d3-income-bar"></div>
+</div>
+
+@section Scripts {
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+    // Constants
+    const barHeight = 25;
+
+    // Class definition
+    class GraphNode {
+        constructor(sum, avg, label, color, href)
+        {
+            this.sum = sum;
+            this.avg = avg;
+            this.label = label;
+            this.color = color;
+            this.href = href;
+        }
+
+        html()
+        {
+            return `<strong>${this.label}</strong>
+                    <br>Total: ${Number(this.sum).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    <br>Average: ${Number(this.avg).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
+    }
+
+    // Add text of all labels to a hidden svg to see the which is the widest.
+    // Return the with of the widest label.
+    function getMaxLabelWidth(labels, font = commonFont) {
+        const svg = d3.select("#label-measure");
+        let maxWidth = 0;
+        labels.forEach(label => {
+            const text = svg
+                .append("text")
+                .attr("font", font)
+                .text(label);
+            const width = text.node().getComputedTextLength();
+            if (width > maxWidth) maxWidth = width;
+            text.remove();
+        });
+        return maxWidth;
+    }
+
+    // Draws graph inside the specified container
+    function roundAwayFromZero(num) {
+        return num < 0 ? Math.floor(num) : Math.ceil(num);
+    }
+
+    function renderGraph(containerId, data, minValue, maxValue, maxLabelWidth, width)
+    {
+        const containerSelect = `#${containerId}`;
+        d3.select(containerSelect).selectAll("svg").remove();
+
+        const graphMargin = {top: 20, right: 20, bottom: 20, left: 0};
+        const graphHeight = data.length * barHeight + graphMargin.top + graphMargin.bottom;
+
+        const x = d3.scaleLinear()
+            .domain([minValue, maxValue])
+            .range([0, width - maxLabelWidth - graphMargin.left - graphMargin.right]);
+        const y = d3.scaleBand()
+            .domain(data.map(g => g.label))
+            .range([graphMargin.top, graphHeight - graphMargin.bottom])
+            .padding(0.2);
+
+        const svgGroup = d3.select(containerSelect)
+            .append("svg")
+            .attr("width", "100%")
+            .attr("height", graphHeight)
+            .attr("viewBox", `0 0 ${width} ${graphHeight}`);
+        svgGroup.append("g")
+            .selectAll("rect")
+            .data(data)
+            .join("rect")
+            .attr("x", d => maxLabelWidth + x(Math.min(0, d.sum)))
+            .attr("y", d => y(d.label))
+            .attr("width", d => Math.abs(x(d.sum) - x(0)))
+            .attr("height", y.bandwidth())
+            .attr("fill", d => d.color)
+            .style("cursor", "pointer")
+            .on("touchmove mousemove", (event, d) => showTooltip("d3-tooltip", event, d))
+            .on("touchend mouseleave", () => hideTooltip("d3-tooltip"))
+            .on("click", function(event, d) {
+                window.location.href = d.href;
+            });
+
+        svgGroup.selectAll(".bar-label")
+            .data(data)
+            .join("text")
+            .attr("class", "bar-label")
+            .attr("x", 0) // Position at left
+            .attr("y", d => y(d.label) + y.bandwidth() / 2)
+            .attr("dy", "0.35em")
+            .attr("font", commonFont)
+            .attr("fill", "#333")
+            .style("text-anchor", "start")
+            .text(d => d.label)
+            .style("cursor", "pointer")
+            .on("click", function(event, d) {
+                window.location.href = d.href;
+            });
+
+        svgGroup.append("g")
+            .attr("transform", `translate(${maxLabelWidth},${graphHeight - graphMargin.bottom})`)
+            .call(d3.axisBottom(x));
+    }
+
+    function renderCharts() {
+        // Data for the expenses bar chart
+        const expenseGroups = (@Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            Model.ExpensesGroups.Select(g => new {
+                sum = -g.TotalAmount,
+                avg = -g.AvgPerMonth,
+                label = g.GroupName,
+                color = g.HttpColor
+            })))).map((g) => new GraphNode(g.sum, g.avg, g.label, g.color, `/GroupTransactions/expense/${@Model.Year}/${encodeURIComponent(g.label)}`));
+
+        // Data for the income bar chart
+        const incomeGroups = (@Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            Model.IncomeGroups.Select((g, i) => new {
+                sum = g.TotalAmount,
+                avg = g.AvgPerMonth,
+                label = g.GroupName,
+                color = g.HttpColor
+            })))).map((g) => new GraphNode(g.sum, g.avg, g.label, g.color, `/GroupTransactions/income/${@Model.Year}/${encodeURIComponent(g.label)}`));
+
+
+        // Data for total Income/Expenses bar chart
+        const totalData = [
+            new GraphNode(@Model.ExpensesTotal.ToString("F2", System.Globalization.CultureInfo.InvariantCulture),
+                          @Model.ExpensesAverage.ToString("F2", System.Globalization.CultureInfo.InvariantCulture),
+                          "Expenses",
+                          "@Model.ExpensesColor",
+                          `/GroupTransactions/expense/@Model.Year`),
+            new GraphNode(@Model.IncomeTotal.ToString("F2", System.Globalization.CultureInfo.InvariantCulture),
+                          @Model.IncomeAverage.ToString("F2", System.Globalization.CultureInfo.InvariantCulture),
+                          "Income",
+                          "@Model.IncomeColor",
+                          `/GroupTransactions/income/@Model.Year`)
+        ];
+
+        // Create a list of all labels for measurement
+        const allLabels = expenseGroups.map(g=>g.label).concat(incomeGroups.map(g=>g.label)).concat(totalData.map(g=>g.label));
+
+        // Measure the widest label
+        const labelPadding = 16; // px, extra space between label and axis
+        const maxLabelWidth = getMaxLabelWidth(allLabels) + labelPadding;
+
+        // Find max value for scaling
+        const maxValue = roundAwayFromZero(Math.max(...expenseGroups.map(g=>g.sum), ...incomeGroups.map(g=>g.sum), ...totalData.map(g=>g.sum), 0));
+        const minValue = roundAwayFromZero(Math.min(...expenseGroups.map(g=>g.sum), ...incomeGroups.map(g=>g.sum), ...totalData.map(g=>g.sum), 0));
+
+        const graphWidth = document.querySelector('#mainContent').clientWidth;
+        renderGraph("d3-group-bar", expenseGroups, minValue, maxValue, maxLabelWidth, graphWidth);
+        renderGraph("d3-total-bar", totalData, minValue, maxValue, maxLabelWidth, graphWidth);
+        renderGraph("d3-income-bar", incomeGroups, minValue, maxValue, maxLabelWidth, graphWidth);
+}
+
+    // Initial render
+    renderCharts();
+    // Re-render on window resize
+    window.addEventListener('resize', renderCharts);
+</script>
+}
+<h2>Details</h2>
+<h3>Expenses</h3>
+<ul>
+    @foreach (var g in Model.ExpensesGroups)
+    {
+        <li>
+            <a href="/GroupTransactions/expense/@Model.Year/@Uri.EscapeDataString(@g.GroupName)">@g.GroupName</a>:
+            Year Total = @g.TotalAmount.ToString("C"), Avg per Month = @g.AvgPerMonth.ToString("C")
+        </li>
+    }
+</ul>
+<br />
+<h3>Income</h3>
+<ul>
+    @foreach (var g in Model.IncomeGroups)
+    {
+        <li>
+            <a href="/GroupTransactions/income/@Model.Year/@g.GroupName">@g.GroupName</a>:
+            Year Total = @g.TotalAmount.ToString("C"), Avg per Month = @g.AvgPerMonth.ToString("C")
+        </li>
+    }
+</ul>
+<br />
+<h3>Totals</h3>
+    <a href="/GroupTransactions/expense/@Model.Year">Total Expense</a>
+    Total = @Model.ExpensesTotal.ToString("C"), Average = @Model.ExpensesAverage.ToString("C")
+<br />
+    <a href="/GroupTransactions/income/@Model.Year">Total Income</a>
+    Total = @Model.IncomeTotal.ToString("C"), Average = @Model.IncomeAverage.ToString("C")
+<br />

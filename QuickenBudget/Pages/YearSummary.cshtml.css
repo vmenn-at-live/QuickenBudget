@@ -1,0 +1,15 @@
+﻿/* https://github.com/vmenn-at-live/QuickenBudget
+ * Copyright (c) 2026 by Valerian Menn - MIT License
+ */
+.charts-container {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    align-items: stretch;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.charts-container > div {
+    width: 100%;
+}

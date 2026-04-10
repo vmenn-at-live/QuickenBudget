@@ -1,0 +1,29 @@
+{
+  "profiles": {
+    "http": {
+      "commandName": "Project",
+      "commandLineArgs": "config\\AllTransactions.txt -c config\\PrivateSelectors.json -ld logs",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "dotnetRunMessages": true,
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker",
+      "commandLineArgs": "-c /config/PrivateSelectors.json",
+      "containerRunArguments": "-v local-path-to-config-directory-with-AllTransactions-and-PrivateSelectors:/config",
+      "launchBrowser": true,
+      "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_HTTP_PORTS": "8080",
+        "TransactionReader__QuickenReportFile": "/config/AllTransactions.txt"
+      },
+      "publishAllPorts": false,
+      "httpPort": 5000,
+      "useSSL": false
+    }
+  },
+  "$schema": "https://json.schemastore.org/launchsettings.json"
+}

@@ -1,0 +1,37 @@
+{
+  "_comment": "Example selector file for TransactionSelectors. Keys starting with '_' are documentation only and ignored by the app. Adjust regexes and field names to match your CSV header translations.",
+  "_notes": {
+    "Field": "The field name to test (e.g., Category, Memo, Description or any OtherFields key).",
+    "Filter": "A regular expression applied to the field value. Use (?i) for case-insensitive matching where supported.",
+    "TargetGroup": "Name of the group to assign when the selector matches.",
+    "AmountOperation": "Optional. One of: \"Equal\", \"Less\", \"Greater\", or \"None\" (None means ignore amount).",
+    "Amount": "Optional decimal value used with AmountOperation when present."
+  },
+  "TransactionSelectors": {
+    "ExpensesGroupSelectors": {
+      "Streaming": [
+        { "Field": "Category", "Filter": "(?i)streaming|netflix|hulu|disney", "TargetGroup": "Streaming" },
+        { "Field": "Description", "Filter": "(?i)spotify|apple music", "TargetGroup": "Streaming" }
+      ],
+      "Groceries": [
+        { "Field": "Category", "Filter": "(?i)grocer|supermarket|grocery", "TargetGroup": "Groceries" },
+        { "Field": "Memo", "Filter": "(?i)costco|whole foods|trader joe", "TargetGroup": "Groceries" }
+      ],
+      "Gas": [
+        { "Field": "Category", "Filter": "(?i)gas|fuel|petrol", "TargetGroup": "Gas" }
+      ]
+    },
+    "TransactionFilters": {
+      "InternalTransfers": [
+        { "Field": "Category", "Filter": "^\\[TRANSFER\\]$", "AmountOperation": "None" },
+        { "Field": "Description", "Filter": "(?i)payment to savings|transfer to", "AmountOperation": "None" }
+      ],
+      "SmallPurchases": [
+        { "Field": "Memo", "Filter": "(?i)coffee|latte|donut", "AmountOperation": "Less", "Amount": 5.00 }
+      ],
+      "ExcludeTestData": [
+        { "Field": "Memo", "Filter": "(?i)test|sample|debug", "AmountOperation": "None" }
+      ]
+    }
+  }
+}

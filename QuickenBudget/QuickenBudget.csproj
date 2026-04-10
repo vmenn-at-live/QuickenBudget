@@ -1,0 +1,66 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
+    <PackageReference Include="Microsoft.VisualStudio.Threading" Version="17.14.15" />
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageReference Include="System.CommandLine" Version="2.0.5" />
+    <PackageReference Include="Microsoft.Web.LibraryManager.Build" Version="3.0.71" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="wwwroot\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <PropertyGroup>
+    <DockerfileFastModeStage>debug</DockerfileFastModeStage>
+  </PropertyGroup>
+    
+  <Target Name="SetPaths">
+      <!-- Cross-platform config paths. Must set it in a target as OutputPath is set as a part of target evaluation and is not available
+           during the project evaluation.
+      -->
+    <PropertyGroup>
+      <ProjectConfigDir>$([System.IO.Path]::Combine('$(MSBuildProjectDirectory)', 'config'))</ProjectConfigDir>
+      <ProjectAllTransactionsFile>$([System.IO.Path]::Combine('$(ProjectConfigDir)', 'AllTransactions.txt'))</ProjectAllTransactionsFile>
+      <ProjectSampleTransactionsFile>$([System.IO.Path]::Combine('$(ProjectConfigDir)', 'SampleTransactions.txt'))</ProjectSampleTransactionsFile>
+      <OutputConfigDir>$([System.IO.Path]::Combine('$(OutputPath)', 'config'))</OutputConfigDir>
+      <OutputAllTransactionsFile>$([System.IO.Path]::Combine('$(OutputConfigDir)', 'AllTransactions.txt'))</OutputAllTransactionsFile>
+      <OutputPrivateSelectorsFile>$([System.IO.Path]::Combine('$(OutputConfigDir)', 'PrivateSelectors.json'))</OutputPrivateSelectorsFile>
+      <PublishConfigDir>$([System.IO.Path]::Combine('$(PublishDir)', 'config'))</PublishConfigDir>
+      <PublishAllTransactionsFile>$([System.IO.Path]::Combine('$(PublishConfigDir)', 'AllTransactions.txt'))</PublishAllTransactionsFile>
+      <PublishPrivateSelectorsFile>$([System.IO.Path]::Combine('$(PublishConfigDir)', 'PrivateSelectors.json'))</PublishPrivateSelectorsFile>
+    </PropertyGroup>
+  </Target>
+
+  
+  <Target Name="CopyContentToBuild" AfterTargets="AfterBuild" DependsOnTargets="SetPaths">
+    <!-- Copy user provided AllTransactions.txt if it exists, otherwise use SampleTransactions.txt   -->
+    <Copy SourceFiles="$(ProjectAllTransactionsFile)" Condition="Exists('$(ProjectAllTransactionsFile)')" DestinationFiles="$(OutputAllTransactionsFile)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(ProjectSampleTransactionsFile)" Condition="!Exists('$(ProjectAllTransactionsFile)')" DestinationFiles="$(OutputAllTransactionsFile)" SkipUnchangedFiles="true" />  
+    <!-- Make sure build copied PrivateSelectors.json to output. If not create an empty one -->
+    <WriteLinesToFile Condition="!Exists('$(OutputPrivateSelectorsFile)')" Lines="{}" File="$(OutputPrivateSelectorsFile)" />
+  </Target>
+  <Target Name="CopyContentToPublish" AfterTargets="AfterPublish" DependsOnTargets="SetPaths">
+    <MakeDir Directories="$(PublishConfigDir)" Condition="!Exists('$(PublishConfigDir)')" />
+    <!-- Copy user provided AllTransactions.txt if it exists, otherwise use SampleTransactions.txt   -->
+    <Copy SourceFiles="$(ProjectAllTransactionsFile)" Condition="Exists('$(ProjectAllTransactionsFile)')" DestinationFiles="$(PublishAllTransactionsFile)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(ProjectSampleTransactionsFile)" Condition="!Exists('$(ProjectAllTransactionsFile)')" DestinationFiles="$(PublishAllTransactionsFile)" SkipUnchangedFiles="true" />
+    <!-- Make sure build copied PrivateSelectors.json to output. If not create an empty one -->
+    <WriteLinesToFile Condition="!Exists('$(PublishPrivateSelectorsFile)')" Lines="{}" File="$(PublishPrivateSelectorsFile)" />
+  </Target>
+  <Target Name="CustomClean" AfterTargets="BeforeClean" DependsOnTargets="SetPaths">
+     <ItemGroup>
+       <_CustomFilesToDelete Include="$(OutputPrivateSelectorsFile)" />
+     </ItemGroup>
+     <Delete Files="@(_CustomFilesToDelete)" />
+  </Target></Project>

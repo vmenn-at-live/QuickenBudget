@@ -1,0 +1,33 @@
+﻿@* https://github.com/vmenn-at-live/QuickenBudget
+ * Copyright (c) 2026 by Valerian Menn - MIT License
+*@
+@page "{type:regex(^(income|expense)$)}/{year:int}/{group?}"
+@model QuickenBudget.Pages.GroupTransactionsModel
+
+<h1>Transactions for @Model.Group in @Model.Year</h1>
+<table>
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Amount</th>
+            @foreach (var col in Model.AdditionalColumns)
+            {
+                <th>@col</th>
+            }
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var t in Model.Transactions)
+    {
+        <tr>
+            <td>@t.Date.ToString("yyyy-MM-dd")</td>
+            <td>@t.Amount.ToString("C")</td>
+            @foreach (var col in Model.AdditionalColumns)
+            {
+                <td>@(t.OtherFields.TryGetValue(col, out var value) ? value : "")</td>
+            }
+        </tr>
+    }
+    </tbody>
+</table>
+<a href="/YearSummary?year=@Model.Year">Back to Year</a>

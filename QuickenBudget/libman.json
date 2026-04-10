@@ -1,0 +1,28 @@
+{
+  "version": "3.0",
+  "defaultProvider": "cdnjs",
+  "libraries": [
+    {
+      "library": "d3@7.9.0",
+      "destination": "wwwroot/lib/d3/"
+    },
+    {
+     "library": "bootstrap@5.3.8",
+      "destination": "wwwroot/lib/bootstrap",
+      "files": [
+        "css/bootstrap.min.css",
+        "css/bootstrap.css",
+        "js/bootstrap.bundle.min.js",
+        "js/bootstrap.bundle.js"
+      ]
+    },
+    {
+      "library": "jquery@3.7.1",
+      "destination": "wwwroot/lib/jquery",
+      "files": [
+        "jquery.min.js",
+        "jquery.js"
+      ]
+    }
+  ]
+}

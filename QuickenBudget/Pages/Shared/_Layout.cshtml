@@ -1,0 +1,72 @@
+@* https://github.com/vmenn-at-live/QuickenBudget
+ * Copyright (c) 2026 by Valerian Menn - MIT License
+*@
+@inject QuickenBudget.Interfaces.ITransactionData transactionData
+@{
+    long pageRefreshTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - QuickenBudget</title>
+    <script type="importmap"></script>
+    <link rel="stylesheet" href="~/lib/bootstrap/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/QuickenBudget.styles.css" asp-append-version="true" />
+</head>
+<body data-page-refresh-time="@pageRefreshTime">
+    <header>
+        <nav class="navbar navbar-expand-sm navbar-light bg-white border-bottom box-shadow fixed-top">
+            <div class="container-fluid">
+                <a class="navbar-brand" asp-area="" asp-page="/Index">QuickenBudget</a>
+                <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/Index">Totals</a>
+                        </li>
+                        @foreach (var year in transactionData.AllYears)
+                        {
+                            <li class ="nav-item">
+                                <a class="nav-link" href="/YearSummary?year=@year">@year</a>
+                            </li>
+                        }
+                    </ul>
+                    <button id="reloadStatusIndicator" type="button" class="btn btn-sm reload-status-indicator d-none" aria-live="polite"></button>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="d-flex" id="layoutMain">
+        <div id="mainContent" class="flex-grow-1">
+            <main role="main" class="pt-5 px-4">
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+
+    <div class="modal fade" id="recentMessagesModal" tabindex="-1" aria-labelledby="recentMessagesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="recentMessagesModalLabel">Recent reload messages</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <ul id="recentMessagesList" class="mb-0 ps-3"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="~/lib/d3/d3.min.js" asp-append-version="true"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/D3Helpers.js" asp-append-version="true"></script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

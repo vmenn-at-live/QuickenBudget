@@ -1,0 +1,48 @@
+{
+  "_comment": "Example showing how to rename CSV headers to canonical field names for CSVSettings.FieldMappings.",
+  "TransactionReader": {
+    "CSVSettings": {
+      "Delimiter": ",",
+      "TrimFields": true,
+      "HandleQuotedFields": true,
+      "LinesToSkip": 0,
+      "FieldMappings": {
+        "Transaction Date": {
+          "MapTo": "Date",
+          "Required": true,
+          "Skip": false
+        },
+        "Txn Date": {
+          "MapTo": "Date",
+          "Required": true,
+          "Skip": false
+        },
+        "CategoryName": {
+          "MapTo": "Category",
+          "Required": true,
+          "Skip": false
+        },
+        "Category": {
+          "MapTo": "Category",
+          "Required": true,
+          "Skip": false
+        },
+        "Amount ($)": {
+          "MapTo": "Amount",
+          "Required": true,
+          "Skip": false
+        },
+        "Memo": {
+          "MapTo": "Memo",
+          "Required": false,
+          "Skip": false
+        },
+        "UnusedColumn": {
+          "MapTo": "",
+          "Required": false,
+          "Skip": true
+        }
+      }
+    }
+  }
+}

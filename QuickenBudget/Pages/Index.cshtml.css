@@ -1,0 +1,33 @@
+﻿/* https://github.com/vmenn-at-live/QuickenBudget
+ * Copyright (c) 2026 by Valerian Menn - MIT License
+ */
+.selector {
+    background-color: #555;
+    color: white;
+    float: left;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    padding: 14px 16px;
+    font-size: 17px;
+    width: 25%;
+}
+
+.button-container {
+    display: flex;
+    flex-direction: row;
+    margin-top: 10px;
+    gap: 24px;
+    align-items: stretch;
+    width: 100%;
+    box-sizing: border-box;
+}
+.selector:hover {
+    background-color: #777;
+}
+
+.content {
+    display: block;
+    padding: 50px;
+    text-align: center;
+}
