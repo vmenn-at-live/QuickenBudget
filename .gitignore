@@ -372,3 +372,6 @@ FodyWeavers.xsd
 # Except examples
 !**/config/example*.json
 !**/config/SampleTransactions.txt
+
+# Directory.build.props
+Directory.Build.props

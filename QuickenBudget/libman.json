@@ -4,7 +4,10 @@
   "libraries": [
     {
       "library": "d3@7.9.0",
-      "destination": "wwwroot/lib/d3/"
+      "destination": "wwwroot/lib/d3/",
+       "files": [
+         "d3.min.js"
+      ]
     },
     {
      "library": "bootstrap@5.3.8",
