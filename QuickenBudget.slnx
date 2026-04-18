@@ -3,6 +3,7 @@
     <File Path=".gitignore" />
     <File Path="README.md" />
     <File Path="SELECTORS_AND_FILTERS.md" />
+    <File Path="THIRD_PARY_NOTICES.md" />
     <File Path="TRANSACTIONS_FILE.md" />
   </Folder>
   <Project Path="QuickenBudget.Tests/QuickenBudget.Tests.csproj" Id="6a803aa2-2890-41c7-9a28-c0714ccb151a" />

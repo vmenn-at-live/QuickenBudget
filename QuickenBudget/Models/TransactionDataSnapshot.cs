@@ -78,7 +78,11 @@ public sealed class TransactionDataSnapshot : ITransactionData
         if (uniqueGroups.Count != 0)
         {
             string[] colors = CreateColors(uniqueGroups.Count);
-            Debug.Assert(colors.Length == uniqueGroups.Count, "The number of colors generated should match the number of unique groups.");
+            if (colors.Length != uniqueGroups.Count)
+            {
+                throw new InvalidOperationException("The number of generated colors should match the number of unique groups.");
+            }
+
             colorDictionary = uniqueGroups.Zip(colors).ToDictionary(x => x.First, x => x.Second, StringComparer.OrdinalIgnoreCase);
         }
 

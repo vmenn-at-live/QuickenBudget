@@ -105,7 +105,6 @@ public class Watcher : BackgroundService
 
         _changeMonitor.StopMonitoring();
         _changeMonitor.Dispose();
-        _changeMonitor = null!;
     }
 
     private void SetupMonitor(CancellationToken stoppingToken)
